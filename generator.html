@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Generador de QR</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="noprint">
+    <h1>Generador de QR</h1>
+    <p>Cargá tu <code>game.json</code>. Se crea un token aleatorio y un código manual por punto, se imprimen las tarjetas y se descarga un JSON con los hashes listos para cargar en el panel.</p>
+    <p class="small">Los tokens existen solo en esta pantalla: imprimí las tarjetas antes de cerrarla. Si regenerás, hay que reimprimir.</p>
+    <input id="file" type="file" accept="application/json,.json">
+    <div class="row">
+      <button id="gen" type="button">Generar</button>
+      <button id="dl" type="button" class="ghost" disabled>Descargar JSON con hashes</button>
+      <button id="print" type="button" class="ghost" disabled>Imprimir tarjetas</button>
+    </div>
+    <p id="msg" class="msg" role="status"></p>
+  </div>
+  <div id="cards" class="cards"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script>
+    const $ = (s) => document.querySelector(s);
+    let cfg = null;
+    const sha = async (s) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)))]
+      .map((b) => b.toString(16).padStart(2, "0")).join("");
+    const rnd = (n) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) => b.toString(16).padStart(2, "0")).join("");
+    const code6 = () => String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, "0");
+    const esc = (t) => String(t ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+    $("#gen").onclick = async () => {
+      const f = $("#file").files[0];
+      if (!f) return ($("#msg").textContent = "Elegí un archivo JSON.");
+      cfg = JSON.parse(await f.text());
+      $("#cards").innerHTML = "";
+      for (const p of cfg.points) {
+        const token = rnd(16);              // token no secuencial, no adivinable
+        p.tokenHash = await sha(token);     // en el JSON solo queda el hash
+        p.backupCode = code6();
+        const d = document.createElement("div");
+        d.className = "card";
+        d.innerHTML = `<strong>${esc(p.name)}</strong><div class="qr"></div>
+          <div>Código manual: <strong>${p.backupCode}</strong></div><div class="small">${esc(p.id)} · ${esc(cfg.name)}</div>`;
+        $("#cards").appendChild(d);
+        new QRCode(d.querySelector(".qr"), { text: token, width: 160, height: 160, correctLevel: QRCode.CorrectLevel.M });
+      }
+      $("#dl").disabled = $("#print").disabled = false;
+      $("#msg").textContent = `${cfg.points.length} tarjetas generadas.`;
+    };
+    $("#dl").onclick = () => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([JSON.stringify(cfg, null, 2)], { type: "application/json" }));
+      a.download = "game.json";
+      a.click();
+    };
+    $("#print").onclick = () => print();
+  </script>
+</body>
+</html>

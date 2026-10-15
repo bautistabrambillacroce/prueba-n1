@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Panel del organizador</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Panel del organizador</h1>
+
+  <section id="login" class="panel">
+    <label for="email">Email</label><input id="email" type="email" autocomplete="username">
+    <label for="pass">Contraseña</label><input id="pass" type="password" autocomplete="current-password">
+    <button id="loginBtn" type="button">Ingresar</button>
+    <p id="loginMsg" class="msg bad" role="alert"></p>
+  </section>
+
+  <section id="main" hidden>
+    <div class="row">
+      <button id="refreshBtn" class="ghost" type="button">Actualizar</button>
+      <button id="logoutBtn" class="ghost" type="button">Salir</button>
+    </div>
+
+    <h2>Equipos y ranking</h2>
+    <table>
+      <thead><tr><th>#</th><th>Equipo</th><th>Puntos</th><th>Logrados</th><th>Códigos manuales</th><th>Error GPS medio</th></tr></thead>
+      <tbody id="teams"></tbody>
+    </table>
+
+    <h2>Participantes (datos personales)</h2>
+    <div id="players" class="small"></div>
+
+    <h2>Configuración de la partida</h2>
+    <div class="panel">
+      <p class="small">Subí el JSON generado con <a href="generator.html">generator.html</a>. Reemplaza los puntos y borra los equipos actuales.</p>
+      <input id="cfgFile" type="file" accept="application/json,.json">
+      <button id="loadBtn" type="button">Cargar configuración</button>
+      <p id="cfgMsg" class="msg" role="status"></p>
+    </div>
+
+    <h2>Reiniciar partida</h2>
+    <div class="panel">
+      <p class="small">Borra equipos, progreso y datos personales de los participantes.</p>
+      <button id="resetBtn" class="danger" type="button">Reiniciar y borrar datos</button>
+    </div>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script>
+    const sb = supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
+    const $ = (s) => document.querySelector(s);
+    const esc = (t) => String(t ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    let poll = null;
+
+    async function rpc(fn, args) {
+      const { data, error } = await sb.rpc(fn, args);
+      if (error) throw new Error(error.message);
+      return data;
+    }
+
+    async function load() {
+      try {
+        const rows = await rpc("admin_teams", {});
+        $("#teams").innerHTML = rows.map((t, i) =>
+          `<tr><td>${i + 1}</td><td>${esc(t.name)}</td><td>${t.score}</td><td>${t.done}</td><td>${t.backups}</td>
+           <td>${t.avg_acc == null ? "-" : Math.round(t.avg_acc) + " m"}</td></tr>`).join("");
+        $("#players").innerHTML = rows.map((t) =>
+          `<p><strong>${esc(t.name)}</strong><br>` + (t.players || []).map((p) =>
+            `${esc(p.name)}, ${p.age} años, ${esc(p.phone)}${p.instagram ? ", " + esc(p.instagram) : ""}`).join("<br>") + "</p>").join("");
+      } catch (e) { $("#teams").innerHTML = `<tr><td colspan="6">${esc(e.message)}</td></tr>`; }
+    }
+
+    async function enter() {
+      $("#login").hidden = true; $("#main").hidden = false;
+      await load();
+      clearInterval(poll);
+      poll = setInterval(() => { if (!document.hidden) load(); }, 15000);
+    }
+
+    $("#loginBtn").onclick = async () => {
+      const { error } = await sb.auth.signInWithPassword({ email: $("#email").value, password: $("#pass").value });
+      if (error) $("#loginMsg").textContent = "Email o contraseña incorrectos."; else enter();
+    };
+    $("#logoutBtn").onclick = async () => { await sb.auth.signOut(); location.reload(); };
+    $("#refreshBtn").onclick = load;
+    $("#resetBtn").onclick = async () => {
+      if (!confirm("¿Seguro? Se borran equipos, progreso y datos personales.")) return;
+      try { await rpc("admin_reset", {}); await load(); } catch (e) { alert(e.message); }
+    };
+    $("#loadBtn").onclick = async () => {
+      const f = $("#cfgFile").files[0], m = $("#cfgMsg");
+      if (!f) { m.textContent = "Elegí un archivo JSON."; m.className = "msg bad"; return; }
+      try {
+        await rpc("admin_load_config", { cfg: JSON.parse(await f.text()) });
+        m.textContent = "Configuración cargada."; m.className = "msg ok"; load();
+      } catch (e) { m.textContent = e.message; m.className = "msg bad"; }
+    };
+    sb.auth.getSession().then(({ data }) => { if (data.session) enter(); });
+  </script>
+</body>
+</html>

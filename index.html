@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Búsqueda del tesoro</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1 id="title">Búsqueda del tesoro</h1>
+
+  <!-- Registro -->
+  <section id="join" hidden>
+    <div class="panel">
+      <label for="code">Código de partida</label>
+      <input id="code" type="text" autocomplete="off" autocapitalize="characters">
+      <label for="tname">Nombre del equipo</label>
+      <input id="tname" type="text" maxlength="40" autocomplete="off">
+    </div>
+    <div id="players"></div>
+    <button id="addPlayer" class="ghost" type="button">Agregar participante</button>
+    <div class="panel">
+      <label class="check"><input id="consent" type="checkbox">
+        <span>Acepto que mis datos (nombre y apellido, edad, teléfono e Instagram) se usen solo para organizar esta
+        actividad y contactarme durante la jugada. Solo los ve el organizador, no aparecen en el ranking y se borran al
+        terminar la actividad. Ley 25.326 de Protección de Datos Personales: podés pedir acceso, rectificación o
+        supresión al organizador.</span></label>
+    </div>
+    <button id="joinBtn" type="button">Empezar a jugar</button>
+    <p id="joinMsg" class="msg bad" role="alert"></p>
+  </section>
+
+  <!-- Juego -->
+  <section id="game" hidden>
+    <div class="hud">
+      <div><div class="small" id="teamName"></div><div id="progress" class="small"></div></div>
+      <div style="text-align:right"><div class="time" id="clock">--:--:--</div><div class="small"><span id="score">0</span> puntos</div></div>
+    </div>
+    <div class="panel">
+      <div class="small">Pista</div>
+      <p class="clue" id="clue"></p>
+      <button id="hintBtn" class="ghost" type="button" hidden></button>
+      <p id="hintText" class="small"></p>
+    </div>
+    <div class="panel">
+      <label for="answer" id="challengeQ">Desafío</label>
+      <input id="answer" type="text" autocomplete="off">
+      <label for="token">QR del punto</label>
+      <div class="row">
+        <input id="token" type="text" autocomplete="off" placeholder="Escaneá el QR">
+        <button id="scanBtn" type="button" class="ghost" style="flex:0 0 auto;margin-top:0">Escanear</button>
+      </div>
+      <div id="reader" hidden></div>
+      <button id="arriveBtn" type="button">Llegamos</button>
+      <details>
+        <summary class="small">¿Mala señal de GPS? Usá el código manual</summary>
+        <label for="backup">Código manual del punto</label>
+        <input id="backup" type="text" autocomplete="off" autocapitalize="characters">
+        <button id="backupBtn" type="button" class="ghost">Validar con código</button>
+      </details>
+      <p id="msg" class="msg" role="status"></p>
+    </div>
+    <div class="panel"><h2>Historia hasta ahora</h2><div id="story" class="small"></div></div>
+  </section>
+
+  <!-- Final -->
+  <section id="end" hidden>
+    <div class="panel"><h2>¡Fin del recorrido!</h2><p id="outro"></p><p>Puntaje final: <strong id="finalScore"></strong></p></div>
+  </section>
+
+  <!-- Ranking en vivo (calculado en el servidor) -->
+  <section id="rank" hidden>
+    <h2>Ranking</h2>
+    <table><thead><tr><th>#</th><th>Equipo</th><th>Puntos</th><th>Puntos logrados</th><th>Tiempo</th></tr></thead><tbody id="rankBody"></tbody></table>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
