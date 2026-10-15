@@ -1,0 +1,5 @@
+config/game.json
+.streamlit/secrets.toml
+node_modules/
+__pycache__/
+.DS_Store
